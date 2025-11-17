@@ -154,7 +154,7 @@ class TestPulpClientErrorHandling:
     def test_gather_content_data_exception(self, mock_config):
         """Test gather_content_data method with exception."""
         client = PulpClient(mock_config)
-        client.find_content = Mock()
+        client.find_content = Mock()  # type: ignore[method-assign]
         client.find_content.side_effect = HTTPError("API error")
 
         with patch("pulp_tool.api.content_query.logging") as mock_logging:
@@ -340,7 +340,7 @@ class TestEdgeCases:
         from pulp_tool.utils import sanitize_build_id_for_repository
 
         # Test None
-        assert sanitize_build_id_for_repository(None) == "default-build"
+        assert sanitize_build_id_for_repository(None) == "default-build"  # type: ignore[arg-type]
 
         # Test empty string
         assert sanitize_build_id_for_repository("") == "default-build"
@@ -394,8 +394,8 @@ class TestEdgeCases:
         assert response.json()["results"] == []
 
         # Test with non-string param value
-        params = {"chunk_param": 123}
-        response = client._chunked_get("https://test.com/api", params, chunk_param="chunk_param")
+        non_string_params: dict[str, int] = {"chunk_param": 123}
+        response = client._chunked_get("https://test.com/api", non_string_params, chunk_param="chunk_param")
         assert response.status_code == 200
         assert response.json()["results"] == []
 

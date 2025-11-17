@@ -27,24 +27,23 @@ def is_remote_url(url: str) -> bool:
     return url.startswith(("http://", "https://"))
 
 
-def has_required_certificates(cert_path: Optional[str], key_path: Optional[str]) -> bool:
+def has_required_certificates(key_path: Optional[str]) -> bool:
     """
-    Check if both certificate paths are provided.
+    Check if key path is provided (certificate path comes from config).
 
     Args:
-        cert_path: Path to certificate file
         key_path: Path to key file
 
     Returns:
-        True if both paths are provided (not None)
+        True if key path is provided (not None)
 
     Example:
-        >>> has_required_certificates("/path/cert", "/path/key")
+        >>> has_required_certificates("/path/key")
         True
-        >>> has_required_certificates("/path/cert", None)
+        >>> has_required_certificates(None)
         False
     """
-    return cert_path is not None and key_path is not None
+    return key_path is not None
 
 
 def is_artifact_type(artifact_name: str, artifact_type: str) -> bool:

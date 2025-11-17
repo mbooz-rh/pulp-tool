@@ -44,7 +44,6 @@ class TestCLIHelp:
         assert "--config" in result.output
         assert "--build-id" in result.output
         assert "--namespace" in result.output
-        assert "--cert-path" in result.output
         assert "--key-path" in result.output
         assert "--debug" in result.output
         assert "--max-workers" in result.output
@@ -404,15 +403,20 @@ class TestTransferCommand:
         """Test transfer with remote artifact URL."""
         runner = CliRunner()
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".pem", delete=False) as cert_file:
-            cert_file.write("cert")
-            cert_path = cert_file.name
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create temporary cert and key files
+            cert_path = Path(tmpdir) / "cert.pem"
+            cert_path.write_text("cert")
+            key_path = Path(tmpdir) / "key.pem"
+            key_path.write_text("key")
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".pem", delete=False) as key_file:
-            key_file.write("key")
-            key_path = key_file.name
+            # Create temporary config file with cert path
+            config_path = Path(tmpdir) / "config.toml"
+            config_content = (
+                '[cli]\nbase_url = "https://pulp.example.com"\n' f'cert = "{cert_path}"\n' f'key = "{key_path}"'
+            )
+            config_path.write_text(config_content)
 
-        try:
             mock_artifact_data = Mock()
             mock_artifact_data.artifacts = []
             mock_artifact_data.artifact_json.distributions = {}
@@ -428,10 +432,10 @@ class TestTransferCommand:
             result = runner.invoke(
                 cli,
                 [
-                    "--cert-path",
-                    cert_path,
+                    "--config",
+                    str(config_path),
                     "--key-path",
-                    key_path,
+                    str(key_path),
                     "transfer",
                     "--artifact-location",
                     "https://example.com/artifact.json",
@@ -439,9 +443,80 @@ class TestTransferCommand:
             )
 
             assert result.exit_code == 0
-        finally:
-            os.unlink(cert_path)
-            os.unlink(key_path)
+
+    @patch("pulp_tool.cli.DistributionClient")
+    @patch("pulp_tool.cli.load_and_validate_artifacts")
+    @patch("pulp_tool.cli.setup_repositories_if_needed")
+    @patch("pulp_tool.cli.download_artifacts_concurrently")
+    @patch("pulp_tool.cli.generate_transfer_report")
+    def test_transfer_with_key_from_config(self, mock_report, mock_download, mock_setup, mock_load, mock_dist_client):
+        """Test transfer with key_path loaded from config when not provided via CLI."""
+        runner = CliRunner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create temporary cert and key files
+            cert_path = Path(tmpdir) / "cert.pem"
+            cert_path.write_text("cert")
+            key_path = Path(tmpdir) / "key.pem"
+            key_path.write_text("key")
+
+            # Create temporary config file with cert and key paths
+            config_path = Path(tmpdir) / "config.toml"
+            config_content = (
+                '[cli]\nbase_url = "https://pulp.example.com"\n' f'cert = "{cert_path}"\n' f'key = "{key_path}"'
+            )
+            config_path.write_text(config_content)
+
+            mock_artifact_data = Mock()
+            mock_artifact_data.artifacts = []
+            mock_artifact_data.artifact_json.distributions = {}
+            mock_load.return_value = mock_artifact_data
+            mock_setup.return_value = None
+
+            mock_result = Mock()
+            mock_result.pulled_artifacts = Mock()
+            mock_result.completed = 0
+            mock_result.failed = 0
+            mock_download.return_value = mock_result
+
+            # Don't provide --key-path, should be loaded from config
+            result = runner.invoke(
+                cli,
+                [
+                    "--config",
+                    str(config_path),
+                    "transfer",
+                    "--artifact-location",
+                    "https://example.com/artifact.json",
+                ],
+            )
+
+            assert result.exit_code == 0
+
+    @patch("pulp_tool.cli.load_and_validate_artifacts")
+    def test_transfer_config_load_exception(self, mock_load):
+        """Test transfer when config file loading raises an exception."""
+        runner = CliRunner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a config file path that will cause an error (invalid TOML)
+            config_path = Path(tmpdir) / "invalid_config.toml"
+            config_path.write_text("invalid toml content [unclosed")
+
+            result = runner.invoke(
+                cli,
+                [
+                    "--config",
+                    str(config_path),
+                    "transfer",
+                    "--artifact-location",
+                    "https://example.com/artifact.json",
+                ],
+            )
+
+            # Should fail because cert/key are required for remote URLs
+            assert result.exit_code == 1
+            mock_load.assert_not_called()
 
     @patch("pulp_tool.cli.load_and_validate_artifacts")
     def test_transfer_remote_url_without_certs(self, mock_load):
@@ -755,6 +830,8 @@ class TestGetRepoMdCommand:
             config_path = Path(tmpdir) / "config.toml"
             config_path.write_text('[cli]\nbase_url = "https://pulp.example.com"\ndomain = "test-domain"')
 
+            output_dir = Path(tmpdir) / "output"
+
             with patch("pulp_tool.cli.httpx.get") as mock_get:
                 mock_response = Mock()
                 mock_response.status_code = 404
@@ -763,7 +840,18 @@ class TestGetRepoMdCommand:
                 )
                 mock_get.return_value = mock_response
 
-                result = runner.invoke(cli, ["--config", str(config_path), "--build-id", "test-build", "get-repo-md"])
+                result = runner.invoke(
+                    cli,
+                    [
+                        "--config",
+                        str(config_path),
+                        "--build-id",
+                        "test-build",
+                        "get-repo-md",
+                        "--output",
+                        str(output_dir),
+                    ],
+                )
 
                 assert result.exit_code == 1
                 assert "404" in result.output
@@ -865,10 +953,16 @@ class TestGetRepoMdCommand:
 
             output_dir = Path(tmpdir) / "output"
 
-            cert_path = Path(tmpdir) / "cert.pem"
-            cert_path.write_text("cert")
             key_path = Path(tmpdir) / "key.pem"
             key_path.write_text("key")
+
+            # Add cert and key to config
+            config_content = (
+                '[cli]\nbase_url = "https://pulp.example.com"\n'
+                'domain = "test-domain"\ncert = "/path/to/cert.pem"\n'
+                f'key = "{key_path}"'
+            )
+            config_path.write_text(config_content)
 
             mock_client = Mock()
             mock_response = Mock()
@@ -884,8 +978,6 @@ class TestGetRepoMdCommand:
                     str(config_path),
                     "--build-id",
                     "test-build",
-                    "--cert-path",
-                    str(cert_path),
                     "--key-path",
                     str(key_path),
                     "get-repo-md",
@@ -896,16 +988,18 @@ class TestGetRepoMdCommand:
 
             assert result.exit_code == 0
 
-    def test_get_repo_md_cert_without_key(self):
-        """Test get-repo-md with cert but no key."""
+    def test_get_repo_md_key_without_cert(self):
+        """Test get-repo-md with key but no cert in config."""
         runner = CliRunner()
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.toml"
             config_path.write_text('[cli]\nbase_url = "https://pulp.example.com"\ndomain = "test-domain"')
 
-            cert_path = Path(tmpdir) / "cert.pem"
-            cert_path.write_text("cert")
+            key_path = Path(tmpdir) / "key.pem"
+            key_path.write_text("key")
+
+            output_dir = Path(tmpdir) / "output"
 
             result = runner.invoke(
                 cli,
@@ -914,13 +1008,85 @@ class TestGetRepoMdCommand:
                     str(config_path),
                     "--build-id",
                     "test-build",
-                    "--cert-path",
-                    str(cert_path),
+                    "--key-path",
+                    str(key_path),
                     "get-repo-md",
+                    "--output",
+                    str(output_dir),
                 ],
             )
 
             # Should fail with exit code 1 due to cert/key validation
+            assert result.exit_code == 1
+
+    @patch("pulp_tool.cli.DistributionClient")
+    def test_get_repo_md_with_key_from_config(self, mock_dist_client):
+        """Test get-repo-md with key_path loaded from config when not provided via CLI."""
+        runner = CliRunner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create temporary cert and key files
+            cert_path = Path(tmpdir) / "cert.pem"
+            cert_path.write_text("cert")
+            key_path = Path(tmpdir) / "key.pem"
+            key_path.write_text("key")
+
+            # Create temporary config file with cert and key paths
+            config_path = Path(tmpdir) / "config.toml"
+            config_content = (
+                '[cli]\nbase_url = "https://pulp.example.com"\n'
+                'domain = "test-domain"\n'
+                f'cert = "{cert_path}"\n'
+                f'key = "{key_path}"'
+            )
+            config_path.write_text(config_content)
+
+            mock_client = Mock()
+            mock_response = Mock()
+            mock_response.content = b"[test-repo]\nname=Test"
+            mock_response.raise_for_status = Mock()
+            mock_client.pull_artifact.return_value = mock_response
+            mock_dist_client.return_value = mock_client
+
+            output_dir = Path(tmpdir) / "output"
+
+            # Don't provide --key-path, should be loaded from config
+            result = runner.invoke(
+                cli,
+                [
+                    "--config",
+                    str(config_path),
+                    "--build-id",
+                    "test-build",
+                    "get-repo-md",
+                    "--output",
+                    str(output_dir),
+                ],
+            )
+
+            assert result.exit_code == 0
+
+    def test_get_repo_md_config_load_exception(self):
+        """Test get-repo-md when config file loading raises an exception."""
+        runner = CliRunner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a config file path that will cause an error (invalid TOML)
+            config_path = Path(tmpdir) / "invalid_config.toml"
+            config_path.write_text("invalid toml content [unclosed")
+
+            result = runner.invoke(
+                cli,
+                [
+                    "--config",
+                    str(config_path),
+                    "--build-id",
+                    "test-build",
+                    "get-repo-md",
+                ],
+            )
+
+            # Should fail because config cannot be loaded
             assert result.exit_code == 1
 
     @patch("pulp_tool.cli.httpx.get")
@@ -969,34 +1135,29 @@ class TestCertAuthOptions:
     """Test cert_auth_options decorator."""
 
     def test_cert_auth_options_decorator(self, tmp_path):
-        """Test that cert_auth_options decorator adds cert_path and key_path options."""
+        """Test that cert_auth_options decorator adds key_path option."""
         import click
 
-        # Create temporary cert and key files
-        cert_file = tmp_path / "cert.pem"
+        # Create temporary key file
         key_file = tmp_path / "key.pem"
-        cert_file.write_text("cert content")
         key_file.write_text("key content")
 
         # Create a test command function
         @click.command()
         @cert_auth_options()
-        def test_command(cert_path, key_path):
+        def test_command(key_path):
             """Test command with cert auth options."""
-            click.echo(f"cert_path={cert_path}, key_path={key_path}")
+            click.echo(f"key_path={key_path}")
 
-        # Test that the decorator added the options
+        # Test that the decorator added the option
         runner = CliRunner()
         result = runner.invoke(
             test_command,
             [
-                "--cert_path",
-                str(cert_file),
                 "--key_path",
                 str(key_file),
             ],
         )
 
         assert result.exit_code == 0
-        assert f"cert_path={cert_file}" in result.output
         assert f"key_path={key_file}" in result.output

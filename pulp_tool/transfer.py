@@ -131,7 +131,10 @@ def load_artifact_metadata(artifact_location: str, distribution_client: Optional
     if artifact_location.startswith(("http://", "https://")):
         # HTTP URL - use distribution client
         if distribution_client is None:
-            raise ValueError("DistributionClient (cert_path and key_path) required for remote artifact locations")
+            raise ValueError(
+                "DistributionClient (certificate and key) required for remote artifact locations. "
+                "Provide via config file."
+            )
         logging.debug("Loading artifact metadata from URL: %s", artifact_location)
         response = distribution_client.pull_artifact(artifact_location)
         return response.json()
@@ -762,7 +765,9 @@ def download_artifacts_concurrently(
     failed = 0
 
     if distribution_client is None:
-        raise ValueError("DistributionClient (cert_path and key_path) required for downloading artifacts")
+        raise ValueError(
+            "DistributionClient (certificate and key) required for downloading artifacts. " "Provide via config file."
+        )
 
     logging.info("Downloading %d artifact(s)", total_artifacts)
     with ThreadPoolExecutor(max_workers=max_workers) as executor:

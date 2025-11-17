@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Developer scripts for common tasks
 - Makefile with common development targets
 - .editorconfig for consistent formatting
-- Containerfile for containerized deployments
+- Dockerfile for containerized deployments
 - Initial release of pulp-tool
 - CLI commands: upload, transfer, get-repo-md
 - PulpClient for API interactions

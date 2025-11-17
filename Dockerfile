@@ -1,4 +1,4 @@
-# Containerfile for pulp-tool
+# Dockerfile for pulp-tool
 # Base image: Fedora 42
 FROM registry.fedoraproject.org/fedora:44@sha256:840ca148f79254df4f6fa229f6e8c28df7e6ddcc0a637d9a8d3d359ac2f2808b
 

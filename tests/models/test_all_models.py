@@ -51,7 +51,7 @@ class TestKonfluxBaseModel:
             name: str
 
         with pytest.raises(ValidationError) as exc_info:
-            TestModel(name="test", extra_field="should fail")
+            TestModel(name="test", extra_field="should fail")  # type: ignore[call-arg]
 
         assert "extra_field" in str(exc_info.value)
 
@@ -64,7 +64,7 @@ class TestKonfluxBaseModel:
         model = TestModel(age=25)
 
         with pytest.raises(ValidationError):
-            model.age = "not an integer"
+            model.age = "not an integer"  # type: ignore[assignment]
 
 
 class TestRepositoryRefs:
@@ -95,7 +95,12 @@ class TestRepositoryRefs:
     def test_repository_refs_required_fields(self):
         """Test that all fields are required."""
         with pytest.raises(ValidationError):
-            RepositoryRefs(rpms_href="/test/", rpms_prn="test")
+            # Missing required fields - should raise ValidationError
+            RepositoryRefs(  # type: ignore[call-arg]
+                rpms_href="/test/",
+                rpms_prn="test",
+                # Missing logs_href, logs_prn, sbom_href, sbom_prn, artifacts_href, artifacts_prn
+            )
 
 
 class TestUploadContext:
@@ -157,7 +162,6 @@ class TestTransferContext:
         )
 
         assert context.artifact_location == "https://example.com/artifacts.json"
-        assert context.cert_path is None
         assert context.key_path is None
         assert context.config is None
         assert context.build_id is None
@@ -168,7 +172,6 @@ class TestTransferContext:
         """Test creating TransferContext with all fields."""
         context = TransferContext(
             artifact_location="https://example.com/artifacts.json",
-            cert_path="/path/to/cert.pem",
             key_path="/path/to/key.pem",
             config="/path/to/config.toml",
             build_id="test-build-123",
@@ -176,7 +179,6 @@ class TestTransferContext:
             debug=2,
         )
 
-        assert context.cert_path == "/path/to/cert.pem"
         assert context.key_path == "/path/to/key.pem"
         assert context.config == "/path/to/config.toml"
         assert context.build_id == "test-build-123"
@@ -783,18 +785,21 @@ class TestModelValidation:
     def test_type_validation(self):
         """Test that type validation works."""
         with pytest.raises(ValidationError):
-            UploadCounts(rpms="not an integer")
+            UploadCounts(rpms="not an integer")  # type: ignore[arg-type]
 
     def test_required_fields_validation(self):
         """Test that required fields are enforced."""
         with pytest.raises(ValidationError):
-            UploadContext(build_id="test")  # Missing required fields
+            # Missing required fields - should raise ValidationError
+            UploadContext(  # type: ignore[call-arg]
+                build_id="test",
+                # Missing date_str, namespace, parent_package, rpm_path, sbom_path
+            )
 
     def test_default_values(self):
         """Test that default values work correctly."""
         context = TransferContext(
             artifact_location="test",
-            cert_path="/path/to/cert.pem",
             key_path="/path/to/key.pem",
         )
 
@@ -808,7 +813,7 @@ class TestModelValidation:
         with pytest.raises(ValidationError):
             PulpResultsModel(
                 build_id="test",
-                repositories="not a RepositoryRefs object",  # Should fail
+                repositories="not a RepositoryRefs object",  # type: ignore[arg-type] # Should fail
             )
 
 

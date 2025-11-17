@@ -271,7 +271,6 @@ class TestHandleSbomResults:
 
     def test_handle_sbom_results_success(self, tmp_path):
         """Test successful SBOM results writing."""
-        from argparse import Namespace
 
         # Create mock results JSON with SBOM
         # The URL already contains the full reference with digest
@@ -296,10 +295,21 @@ class TestHandleSbomResults:
         json_content = json.dumps(results_json)
 
         sbom_file = tmp_path / "sbom_result.txt"
-        args = Namespace(sbom_results=str(sbom_file))
+        from pulp_tool.models.context import UploadContext
+
+        # Create proper UploadContext instead of Namespace
+        args = UploadContext(
+            build_id="test-build",
+            date_str="2024-01-01",
+            namespace="test-ns",
+            parent_package="test-pkg",
+            rpm_path="/tmp/rpms",
+            sbom_path="/tmp/sbom.json",
+            sbom_results=str(sbom_file),
+        )
 
         # Mock client (not actually used in this function)
-        mock_client = None
+        mock_client = Mock()
 
         _handle_sbom_results(mock_client, args, json_content)
 
@@ -311,7 +321,6 @@ class TestHandleSbomResults:
 
     def test_handle_sbom_results_no_sbom_found(self, tmp_path, caplog):
         """Test handling when no SBOM is found."""
-        from argparse import Namespace
         import logging
 
         # Create mock results JSON without SBOM
@@ -328,8 +337,18 @@ class TestHandleSbomResults:
         json_content = json.dumps(results_json)
 
         sbom_file = tmp_path / "sbom_result.txt"
-        args = Namespace(sbom_results=str(sbom_file))
-        mock_client = None
+        from pulp_tool.models.context import UploadContext
+
+        args = UploadContext(
+            build_id="test-build",
+            date_str="2024-01-01",
+            namespace="test-ns",
+            parent_package="test-pkg",
+            rpm_path="/tmp/rpms",
+            sbom_path="/tmp/sbom.json",
+            sbom_results=str(sbom_file),
+        )
+        mock_client = Mock()
 
         # Capture INFO level logs since the message is now at INFO level
         with caplog.at_level(logging.INFO):
@@ -341,7 +360,6 @@ class TestHandleSbomResults:
 
     def test_handle_sbom_results_json_file_without_arch(self, tmp_path):
         """Test SBOM detection with .json extension (no arch label)."""
-        from argparse import Namespace
 
         # Create mock results JSON with .json file (SBOM) without arch
         # The URL already contains the full reference with digest
@@ -358,8 +376,18 @@ class TestHandleSbomResults:
         json_content = json.dumps(results_json)
 
         sbom_file = tmp_path / "sbom_result.txt"
-        args = Namespace(sbom_results=str(sbom_file))
-        mock_client = None
+        from pulp_tool.models.context import UploadContext
+
+        args = UploadContext(
+            build_id="test-build",
+            date_str="2024-01-01",
+            namespace="test-ns",
+            parent_package="test-pkg",
+            rpm_path="/tmp/rpms",
+            sbom_path="/tmp/sbom.json",
+            sbom_results=str(sbom_file),
+        )
+        mock_client = Mock()
 
         _handle_sbom_results(mock_client, args, json_content)
 

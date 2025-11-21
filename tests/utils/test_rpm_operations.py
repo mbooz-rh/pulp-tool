@@ -59,7 +59,7 @@ class TestBatchProcessingUtilities:
 
     def test_create_batches(self):
         """Test _create_batches function."""
-        items = list(range(100))
+        items = [str(i) for i in range(100)]
         batches = list(_create_batches(items, batch_size=25))
 
         assert len(batches) == 4
@@ -74,7 +74,7 @@ class TestBatchProcessingUtilities:
 
     def test_create_batches_single_batch(self):
         """Test _create_batches function with single batch."""
-        items = list(range(10))
+        items = [str(i) for i in range(10)]
         batches = list(_create_batches(items, batch_size=25))
 
         assert len(batches) == 1

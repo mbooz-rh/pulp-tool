@@ -52,7 +52,6 @@ pulp-tool upload \
 ```bash
 pulp-tool transfer \
   --artifact-location /path/to/artifacts.json \
-  --cert-path /path/to/cert.pem \
   --key-path /path/to/key.pem \
   --config ~/.config/pulp/cli.toml
 ```
@@ -143,8 +142,9 @@ print(upload_ctx.build_id)  # Type-safe access
 from pulp_tool import DistributionClient
 
 # Initialize with certificate authentication
+# Certificate path comes from config file, key can be provided directly
 dist_client = DistributionClient(
-    cert_path="/path/to/cert.pem",
+    cert_path="/path/to/cert.pem",  # From config file
     key_path="/path/to/key.pem"
 )
 
@@ -262,9 +262,8 @@ Download artifacts from Pulp distributions and optionally re-upload to Pulp repo
 - `--artifact-location`: Path to local artifact metadata JSON file or HTTP URL
 
 **Optional Arguments (conditionally required):**
-- `--cert-path`: Path to SSL certificate file for authentication (required for remote URLs)
-- `--key-path`: Path to SSL private key file for authentication (required for remote URLs)
-- `--config`: Path to Pulp CLI config file (if supplied, will transfer to this config domain)
+- `--key-path`: Path to SSL private key file for authentication (required for remote URLs, certificate path comes from config)
+- `--config`: Path to Pulp CLI config file (if supplied, will transfer to this config domain and use cert/key from config)
 - `--build-id`: Build ID for naming repositories (default: extracted from artifact labels)
 - `--max-workers`: Maximum number of concurrent download threads (default: 4)
 - `-d, --debug`: Increase verbosity (use `-d` for INFO, `-dd` for DEBUG, `-ddd` for DEBUG with HTTP logs)
@@ -273,7 +272,6 @@ Download artifacts from Pulp distributions and optionally re-upload to Pulp repo
 ```bash
 pulp-tool transfer \
   --artifact-location https://example.com/artifacts.json \
-  --cert-path /etc/pki/tls/certs/client.crt \
   --key-path /etc/pki/tls/private/client.key \
   --config ~/.config/pulp/cli.toml \
   --max-workers 4 \
@@ -295,8 +293,7 @@ Download `.repo` configuration file(s) from Pulp distribution(s) for use with `d
   - `--namespace`: Pulp namespace/domain (e.g., `my-tenant`)
 
 **Optional Arguments:**
-- `--cert-path`: Path to SSL certificate file for authentication
-- `--key-path`: Path to SSL private key file for authentication
+- `--key-path`: Path to SSL private key file for authentication (certificate path comes from config file)
 - `--output`: Output directory for `.repo` files (default: current directory). Files named `{build_id}-{repo_type}.repo`
 - `-d, --debug`: Increase verbosity (use `-d` for INFO, `-dd` for DEBUG, `-ddd` for DEBUG with HTTP logs)
 
@@ -336,14 +333,14 @@ pulp-tool get-repo-md \
   --repo_type rpms,logs \
   --output /tmp/repo-files
 
-# With certificate authentication
+# With certificate authentication (certificate path comes from config)
 pulp-tool get-repo-md \
   --base-url https://pulp.example.com \
   --namespace my-tenant \
   --build-id my-build-123 \
   --repo_type rpms \
-  --cert-path /path/to/cert.pem \
-  --key-path /path/to/key.pem
+  --key-path /path/to/key.pem \
+  --config ~/.config/pulp/cli.toml
 
 # Install the repository configuration
 sudo cp *.repo /etc/yum.repos.d/

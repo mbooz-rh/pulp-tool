@@ -5,6 +5,8 @@ This module contains comprehensive tests for the PulpHelper class methods includ
 repository setup, distribution URL retrieval, and helper methods.
 """
 
+from typing import Any
+
 from unittest.mock import Mock, patch
 from httpx import HTTPError
 import pytest
@@ -344,7 +346,7 @@ class TestPulpHelperDistributionOperations:
         """Test PulpHelper _check_existing_distribution with AttributeError."""
         helper = PulpHelper(mock_pulp_client)
 
-        methods = {}
+        methods: dict[str, Any] = {}
 
         result = helper._check_existing_distribution(methods, "test-build/rpms", "rpms")
 
@@ -383,7 +385,7 @@ class TestPulpHelperDistributionOperations:
         """Test PulpHelper _create_distribution_task when already exists."""
         helper = PulpHelper(mock_pulp_client)
 
-        methods = {}
+        methods: dict[str, Any] = {}
 
         with patch.object(helper, "_check_existing_distribution", return_value=True):
             task_id = helper._create_distribution_task("test-build", "rpms", "test-prn", methods)

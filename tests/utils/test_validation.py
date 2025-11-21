@@ -70,8 +70,8 @@ class TestBuildIDValidation:
     def test_validate_build_id_invalid(self):
         """Test validate_build_id with invalid build ID."""
         assert validate_build_id("") is False
-        assert validate_build_id(None) is False
-        assert validate_build_id(123) is False
+        assert validate_build_id(None) is False  # type: ignore[arg-type]
+        assert validate_build_id(123) is False  # type: ignore[arg-type]
 
     def test_sanitize_build_id_for_repository(self):
         """Test sanitize_build_id_for_repository function."""
@@ -83,7 +83,7 @@ class TestBuildIDValidation:
 
         # Test empty build ID
         assert sanitize_build_id_for_repository("") == "default-build"
-        assert sanitize_build_id_for_repository(None) == "default-build"
+        assert sanitize_build_id_for_repository(None) == "default-build"  # type: ignore[arg-type]
 
         # Test build ID with multiple consecutive hyphens
         assert sanitize_build_id_for_repository("test--build---123") == "test-build-123"

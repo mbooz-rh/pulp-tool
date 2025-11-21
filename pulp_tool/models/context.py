@@ -45,8 +45,7 @@ class TransferContext(KonfluxBaseModel):
     Attributes:
         artifact_location: Path or URL to artifact metadata (can be generated from namespace+build_id)
         namespace: Optional namespace for auto-generating artifact URL (requires build_id and config)
-        cert_path: Optional path to SSL certificate (required for remote URLs)
-        key_path: Optional path to SSL private key (required for remote URLs)
+        key_path: Optional path to SSL private key (required for remote URLs, can come from config)
         config: Optional path to Pulp config file
         build_id: Optional build identifier (can be used for override or with namespace for URL generation)
         debug: Verbosity level (0=WARNING, 1=INFO, 2=DEBUG, 3+=DEBUG with HTTP logs)
@@ -57,7 +56,6 @@ class TransferContext(KonfluxBaseModel):
 
     artifact_location: Optional[str] = None
     namespace: Optional[str] = None
-    cert_path: Optional[str] = None
     key_path: Optional[str] = None
     config: Optional[str] = None
     build_id: Optional[str] = None

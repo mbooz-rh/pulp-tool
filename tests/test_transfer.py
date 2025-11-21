@@ -3,27 +3,36 @@
 Tests for pulp_transfer.py module.
 """
 
-import pytest
-import tempfile
-import os
 import json
+import logging
+import os
 import re
-from unittest.mock import Mock, patch, mock_open
-from httpx import HTTPError
+import tempfile
+from unittest.mock import Mock, mock_open, patch
+
 import httpx
+import pytest
+from httpx import HTTPError
+
 from pulp_tool.api import DistributionClient
+from pulp_tool.models.artifacts import ArtifactFile, PulledArtifacts
+from pulp_tool.models.results import PulpResultsModel
 from pulp_tool.transfer import (
+    _categorize_artifacts,
+    _extract_artifact_info,
+    _format_file_size,
+    _log_build_information,
+    _log_pulp_upload_info,
+    _log_storage_summary,
+    _log_transfer_summary,
+    _upload_rpms_to_repository,
+    _upload_sboms_and_logs,
+    download_artifacts_concurrently,
+    load_and_validate_artifacts,
     load_artifact_metadata,
     setup_repositories_if_needed,
-    _upload_rpms_to_repository,
     upload_downloaded_files_to_pulp,
-    _log_transfer_summary,
-    _format_file_size,
-    load_and_validate_artifacts,
-    _extract_artifact_info,
 )
-
-# CLI imports removed - Click testing done in test_cli.py
 from pulp_tool.utils import RepositoryRefs, determine_build_id
 
 
@@ -130,10 +139,13 @@ class TestArtifactManagement:
         with pytest.raises(json.JSONDecodeError):
             load_artifact_metadata(temp_file, client)
 
+    def test_load_artifact_metadata_remote_url_no_client(self):
+        """Test loading artifact metadata from remote URL without distribution client raises ValueError."""
+        with pytest.raises(ValueError, match="DistributionClient.*required for remote artifact locations"):
+            load_artifact_metadata("https://example.com/artifacts.json", None)
+
     def test_categorize_artifacts(self):
         """Test categorizing artifacts by type."""
-        from pulp_tool.transfer import _categorize_artifacts
-
         artifacts = {
             "test.rpm": {"labels": {"arch": "x86_64"}},
             "test.sbom": {"labels": {"arch": "noarch"}},
@@ -220,7 +232,7 @@ class TestBuildIdManagement:
         args.build_id = "test-build"
         args.artifact_file = None
 
-        pulled_artifacts = {}
+        pulled_artifacts = PulledArtifacts(rpms={}, logs={}, sboms={})
 
         result = determine_build_id(args, pulled_artifacts=pulled_artifacts)
 
@@ -228,8 +240,6 @@ class TestBuildIdManagement:
 
     def test_determine_build_id_from_artifacts(self):
         """Test determining build_id from pulled artifacts."""
-        from pulp_tool.models.artifacts import PulledArtifacts
-
         args = Mock()
         args.build_id = None
         args.artifact_file = None
@@ -264,58 +274,59 @@ class TestUploadFunctionality:
 
     def test_upload_rpms_success(self, mock_pulp_client, httpx_mock):
         """Test successful RPM upload."""
-        from pulp_tool.models.artifacts import PulledArtifacts
-        from pulp_tool.models.results import PulpResultsModel
+        # Create a temporary file for the test
+        with tempfile.NamedTemporaryFile(suffix=".rpm", delete=False) as tmp_file:
+            tmp_file.write(b"fake rpm content")
+            tmp_file_path = tmp_file.name
 
-        pulled_artifacts = PulledArtifacts()
-        pulled_artifacts.add_rpm("test.rpm", "/tmp/test.rpm", {"build_id": "test-build", "arch": "x86_64"})
+        try:
+            pulled_artifacts = PulledArtifacts()
+            pulled_artifacts.add_rpm("test.rpm", tmp_file_path, {"build_id": "test-build", "arch": "x86_64"})
 
-        repositories = RepositoryRefs(
-            rpms_href="/pulp/api/v3/repositories/12345/",
-            rpms_prn="",
-            logs_href="",
-            logs_prn="",
-            sbom_href="",
-            sbom_prn="",
-            artifacts_href="",
-            artifacts_prn="",
-        )
-
-        upload_info = PulpResultsModel(build_id="test-build", repositories=repositories)
-
-        # Mock the upload endpoint
-        httpx_mock.post(re.compile(r".*/content/rpm/packages/upload/")).mock(
-            return_value=httpx.Response(201, json={"pulp_href": "/pulp/api/v3/content/12345/"})
-        )
-
-        # Mock the add content endpoint
-        httpx_mock.post(re.compile(r".*/repositories/12345/modify/")).mock(
-            return_value=httpx.Response(202, json={"task": "/pulp/api/v3/tasks/67890/"})
-        )
-
-        # Mock the task endpoint (must match task href from add content response)
-        httpx_mock.get(re.compile(r".*/tasks/67890/")).mock(
-            return_value=httpx.Response(
-                200, json={"pulp_href": "/pulp/api/v3/tasks/67890/", "state": "completed", "created_resources": []}
+            repositories = RepositoryRefs(
+                rpms_href="/pulp/api/v3/repositories/12345/",
+                rpms_prn="",
+                logs_href="",
+                logs_prn="",
+                sbom_href="",
+                sbom_prn="",
+                artifacts_href="",
+                artifacts_prn="",
             )
-        )
 
-        with (
-            patch("pulp_tool.api.content_manager.validate_file_path") as mock_validate,
-            patch("builtins.open", mock_open(read_data=b"fake rpm content")),
-        ):
-            mock_validate.return_value = None  # No exception
+            upload_info = PulpResultsModel(build_id="test-build", repositories=repositories)
 
-            _upload_rpms_to_repository(mock_pulp_client, pulled_artifacts, repositories, upload_info)
+            # Mock the upload endpoint
+            httpx_mock.post(re.compile(r".*/content/rpm/packages/upload/")).mock(
+                return_value=httpx.Response(201, json={"pulp_href": "/pulp/api/v3/content/12345/"})
+            )
 
-            # Verify upload_info was updated
-            assert upload_info.uploaded_counts.rpms == 1
+            # Mock the add content endpoint
+            httpx_mock.post(re.compile(r".*/repositories/12345/modify/")).mock(
+                return_value=httpx.Response(202, json={"task": "/pulp/api/v3/tasks/67890/"})
+            )
+
+            # Mock the task endpoint (must match task href from add content response)
+            httpx_mock.get(re.compile(r".*/tasks/67890/")).mock(
+                return_value=httpx.Response(
+                    200, json={"pulp_href": "/pulp/api/v3/tasks/67890/", "state": "completed", "created_resources": []}
+                )
+            )
+
+            with patch("pulp_tool.api.content_manager.validate_file_path") as mock_validate:
+                mock_validate.return_value = None  # No exception
+
+                _upload_rpms_to_repository(mock_pulp_client, pulled_artifacts, repositories, upload_info)
+
+                # Verify upload_info was updated
+                assert upload_info.uploaded_counts.rpms == 1
+        finally:
+            # Clean up temporary file
+            if os.path.exists(tmp_file_path):
+                os.unlink(tmp_file_path)
 
     def test_upload_rpms_exception(self, mock_pulp_client, httpx_mock):
         """Test RPM upload with exception."""
-        from pulp_tool.models.artifacts import PulledArtifacts
-        from pulp_tool.models.results import PulpResultsModel
-
         pulled_artifacts = PulledArtifacts()
         pulled_artifacts.add_rpm("test.rpm", "/tmp/test.rpm", {"build_id": "test-build", "arch": "x86_64"})
 
@@ -350,10 +361,6 @@ class TestUploadFunctionality:
 
     def test_upload_sboms_and_logs(self, mock_pulp_client, httpx_mock):
         """Test uploading SBOMs and logs."""
-        from pulp_tool.transfer import _upload_sboms_and_logs
-        from pulp_tool.models.artifacts import PulledArtifacts
-        from pulp_tool.models.results import PulpResultsModel
-
         pulled_artifacts = PulledArtifacts()
         pulled_artifacts.add_sbom("test.sbom", "/tmp/test.sbom", {"build_id": "test"})
         pulled_artifacts.add_log("test.log", "/tmp/test.log", {"build_id": "test"})
@@ -502,8 +509,6 @@ class TestUploadFunctionality:
             )
 
             # Create proper PulledArtifacts object
-            from pulp_tool.models.artifacts import PulledArtifacts
-
             pulled_artifacts = PulledArtifacts()
             pulled_artifacts.add_rpm("test.rpm", "/tmp/test.rpm", {"build_id": "test"})
 
@@ -559,10 +564,6 @@ class TestLoggingAndReporting:
 
     def test_log_storage_summary(self, caplog):
         """Test _log_storage_summary logs correct information."""
-        from pulp_tool.transfer import _log_storage_summary
-        from pulp_tool.models.artifacts import PulledArtifacts, ArtifactFile
-        import logging
-
         # Create temporary files for test
         with tempfile.TemporaryDirectory() as tmpdir:
             rpm1 = os.path.join(tmpdir, "test.rpm")
@@ -611,10 +612,7 @@ class TestLoggingAndReporting:
 
     def test_log_storage_summary_debug_level(self):
         """Test logging storage summary at DEBUG level."""
-        from pulp_tool.transfer import _log_storage_summary
-
         total_files = 5
-        from pulp_tool.models.artifacts import PulledArtifacts, ArtifactFile
 
         pulled_artifacts = PulledArtifacts()
         pulled_artifacts.rpms["test1.rpm"] = ArtifactFile(file="/tmp/test1.rpm", labels={})
@@ -633,9 +631,6 @@ class TestLoggingAndReporting:
 
     def test_log_pulp_upload_info_with_upload_info(self):
         """Test logging Pulp upload info when upload_info is provided."""
-        from pulp_tool.transfer import _log_pulp_upload_info
-        from pulp_tool.models.results import PulpResultsModel
-
         repositories = RepositoryRefs(
             rpms_href="",
             rpms_prn="rpms-prn",
@@ -671,8 +666,6 @@ class TestLoggingAndReporting:
 
     def test_log_pulp_upload_info_without_upload_info(self):
         """Test logging Pulp upload info when upload_info is None."""
-        from pulp_tool.transfer import _log_pulp_upload_info
-
         with patch("pulp_tool.transfer.logging") as mock_logging:
             _log_pulp_upload_info(None)
 
@@ -682,9 +675,6 @@ class TestLoggingAndReporting:
 
     def test_log_build_information(self):
         """Test logging build information."""
-        from pulp_tool.transfer import _log_build_information
-        from pulp_tool.models.artifacts import PulledArtifacts
-
         pulled_artifacts = PulledArtifacts()
         pulled_artifacts.add_rpm("test1.rpm", "/tmp/test1.rpm", {"build_id": "build1", "namespace": "ns1"})
         pulled_artifacts.add_rpm("test2.rpm", "/tmp/test2.rpm", {"build_id": "build2", "namespace": "ns2"})
@@ -703,8 +693,6 @@ class TestClientInitialization:
     def test_initialize_clients(self):
         """Test distribution client initialization."""
         # This is now inlined in the CLI, but we can test DistributionClient directly
-        from pulp_tool.api import DistributionClient
-
         client = DistributionClient("/tmp/cert.pem", "/tmp/key.pem")
         assert client.cert == "/tmp/cert.pem"
         assert client.key == "/tmp/key.pem"
@@ -731,9 +719,6 @@ class TestClientInitialization:
 
     def test_handle_pulp_upload_with_client(self):
         """Test handling upload with Pulp client."""
-        from pulp_tool.models.artifacts import PulledArtifacts
-        from pulp_tool.transfer import upload_downloaded_files_to_pulp
-
         pulled_artifacts = PulledArtifacts()
         args = Mock()
         args.build_id = "test-build"
@@ -768,8 +753,6 @@ class TestTransferHelpers:
 
     def test_categorize_artifacts(self):
         """Test artifact categorization by type."""
-        from pulp_tool.transfer import _categorize_artifacts
-
         artifacts = {
             "file1.rpm": {"url": "http://example.com/file1.rpm", "arch": "x86_64"},
             "file2.log": {"url": "http://example.com/file2.log"},
@@ -792,12 +775,22 @@ class TestTransferHelpers:
 
     def test_format_file_size(self):
         """Test file size formatting."""
-        from pulp_tool.transfer import _format_file_size
-
         assert _format_file_size(512) == "512.0 B"
         assert _format_file_size(1024) == "1.0 KB"
         assert _format_file_size(1024 * 1024) == "1.0 MB"
         assert _format_file_size(1024 * 1024 * 1024) == "1.0 GB"
+
+    def test_download_artifacts_concurrently_no_client(self):
+        """Test download_artifacts_concurrently raises ValueError when distribution_client is None."""
+        artifacts = {
+            "file1.rpm": {"url": "http://example.com/file1.rpm", "arch": "x86_64"},
+        }
+        distros = {
+            "rpms": "http://example.com/rpms/",
+        }
+
+        with pytest.raises(ValueError, match="DistributionClient.*required for downloading artifacts"):
+            download_artifacts_concurrently(artifacts, distros, None, max_workers=4)
 
 
 class TestExtractArtifactInfo:
@@ -826,8 +819,6 @@ class TestExtractArtifactInfo:
 
     def test_extract_artifact_info_with_model(self):
         """Test _extract_artifact_info with model object."""
-        from pulp_tool.models.artifacts import ArtifactFile
-
         artifact_data = ArtifactFile(
             file="/path/to/file.rpm",
             labels={"build_id": "test-build", "arch": "x86_64"},
@@ -847,7 +838,7 @@ class TestExtractArtifactInfo:
 
         artifact_data = MockArtifact()
 
-        file_path, labels = _extract_artifact_info(artifact_data)
+        file_path, labels = _extract_artifact_info(artifact_data)  # type: ignore[arg-type]
 
         assert file_path == "/path/to/file.rpm"
         assert labels == {}
@@ -858,4 +849,4 @@ class TestExtractArtifactInfo:
         artifact_data = 123  # int type
 
         with pytest.raises(ValueError, match="Unexpected artifact_data type"):
-            _extract_artifact_info(artifact_data)
+            _extract_artifact_info(artifact_data)  # type: ignore[arg-type]

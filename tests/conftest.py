@@ -20,7 +20,7 @@ import httpx
 import respx
 
 # Global registry to track temporary files for cleanup
-_temp_file_registry = set()
+_temp_file_registry: set[str] = set()
 
 
 @pytest.fixture(scope="session", autouse=True)

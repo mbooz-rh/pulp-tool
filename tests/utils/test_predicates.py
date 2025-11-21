@@ -37,21 +37,13 @@ class TestUrlPredicates:
 class TestCertificatePredicates:
     """Tests for certificate predicate functions."""
 
-    def test_has_required_certificates_both_present(self):
-        """Test when both certificate paths are provided."""
-        assert has_required_certificates("/path/cert", "/path/key") is True
+    def test_has_required_certificates_present(self):
+        """Test when key path is provided."""
+        assert has_required_certificates("/path/key") is True
 
-    def test_has_required_certificates_cert_missing(self):
-        """Test when certificate path is missing."""
-        assert has_required_certificates(None, "/path/key") is False
-
-    def test_has_required_certificates_key_missing(self):
+    def test_has_required_certificates_missing(self):
         """Test when key path is missing."""
-        assert has_required_certificates("/path/cert", None) is False
-
-    def test_has_required_certificates_both_missing(self):
-        """Test when both paths are missing."""
-        assert has_required_certificates(None, None) is False
+        assert has_required_certificates(None) is False
 
 
 class TestArtifactPredicates:
@@ -136,7 +128,7 @@ class TestBuildIdPredicates:
 
     def test_is_valid_build_id_not_string(self):
         """Test non-string build ID."""
-        assert is_valid_build_id(123) is False
+        assert is_valid_build_id(123) is False  # type: ignore[arg-type]
 
 
 class TestConfigPredicates:

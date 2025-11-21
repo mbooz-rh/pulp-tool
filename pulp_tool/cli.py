@@ -65,11 +65,6 @@ def cert_auth_options() -> Callable[[F], F]:
 
     def decorator(func: F) -> F:
         func = click.option(
-            "--cert_path",
-            type=click.Path(exists=True),
-            help="Path to SSL certificate file for authentication (optional)",
-        )(func)
-        func = click.option(
             "--key_path",
             type=click.Path(exists=True),
             help="Path to SSL private key file for authentication (optional)",
@@ -90,11 +85,6 @@ def cert_auth_options() -> Callable[[F], F]:
     "--config",
     type=click.Path(exists=True),
     help="Path to Pulp CLI config file (default: ~/.config/pulp/cli.toml)",
-)
-@click.option(
-    "--cert-path",
-    type=click.Path(exists=True),
-    help="Path to SSL certificate file for authentication (optional)",
 )
 @click.option(
     "--key-path",
@@ -125,7 +115,6 @@ def cert_auth_options() -> Callable[[F], F]:
 def cli(
     ctx: click.Context,
     config: Optional[str],
-    cert_path: Optional[str],
     key_path: Optional[str],
     build_id: Optional[str],
     namespace: Optional[str],
@@ -136,7 +125,6 @@ def cli(
     # Store shared options in context for subcommands to access
     ctx.ensure_object(dict)
     ctx.obj["config"] = config
-    ctx.obj["cert_path"] = cert_path
     ctx.obj["key_path"] = key_path
     ctx.obj["build_id"] = build_id
     ctx.obj["namespace"] = namespace
@@ -288,7 +276,6 @@ def transfer(  # pylint: disable=too-many-positional-arguments
     """Download artifacts and optionally re-upload to Pulp repositories."""
     # Get shared options from context
     namespace = ctx.obj["namespace"]
-    cert_path = ctx.obj["cert_path"]
     key_path = ctx.obj["key_path"]
     config = ctx.obj["config"]
     build_id = ctx.obj["build_id"]
@@ -331,11 +318,23 @@ def transfer(  # pylint: disable=too-many-positional-arguments
     content_types_list = [ct.strip() for ct in content_types.split(",")] if content_types else None
     archs_list = [arch.strip() for arch in archs.split(",")] if archs else None
 
+    # Get certificate paths from config if available
+    cert_path = None
+    if config:
+        try:
+            config_path = Path(config).expanduser()
+            with open(config_path, "rb") as fp:
+                config_data = tomllib.load(fp)
+            cert_path = config_data.get("cli", {}).get("cert")
+            if not key_path:
+                key_path = config_data.get("cli", {}).get("key")
+        except Exception as e:
+            logging.debug("Could not load cert/key from config: %s", e)
+
     # Create context object
     args = TransferContext(
         artifact_location=artifact_location,
         namespace=namespace,
-        cert_path=cert_path,
         key_path=key_path,
         config=config,
         build_id=build_id,
@@ -351,7 +350,10 @@ def transfer(  # pylint: disable=too-many-positional-arguments
 
         # Validate that cert_path and key_path are provided for remote URLs
         if is_remote and (not cert_path or not key_path):
-            logging.error("--cert_path and --key_path are required when artifact_location is a remote URL")
+            logging.error(
+                "Certificate and key paths are required when artifact_location is a remote URL. "
+                "Provide them via --config or --key-path."
+            )
             sys.exit(1)
 
         # Initialize distribution client only if needed
@@ -462,7 +464,6 @@ def get_repo_md(  # pylint: disable=too-many-arguments,too-many-positional-argum
     config = ctx.obj["config"]
     namespace = ctx.obj["namespace"]
     build_id = ctx.obj["build_id"]
-    cert_path = ctx.obj["cert_path"]
     key_path = ctx.obj["key_path"]
     debug = ctx.obj["debug"]
 
@@ -478,9 +479,22 @@ def get_repo_md(  # pylint: disable=too-many-arguments,too-many-positional-argum
     failed_downloads = []
 
     try:
+        # Get certificate paths from config if available
+        cert_path = None
+        if config:
+            try:
+                config_path = Path(config).expanduser()
+                with open(config_path, "rb") as fp:
+                    config_data = tomllib.load(fp)
+                cert_path = config_data.get("cli", {}).get("cert")
+                if not key_path:
+                    key_path = config_data.get("cli", {}).get("key")
+            except Exception as e:
+                logging.debug("Could not load cert/key from config: %s", e)
+
         # Validate certificate/key pair
         if (cert_path and not key_path) or (key_path and not cert_path):
-            logging.error("Both --cert-path and --key-path must be provided together")
+            logging.error("Both certificate and key paths must be provided together (via --config or --key-path)")
             sys.exit(1)
 
         # Validate that either config OR (base-url AND namespace) are provided

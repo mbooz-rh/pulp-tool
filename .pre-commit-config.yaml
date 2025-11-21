@@ -44,7 +44,7 @@ repos:
           - types-requests
           - types-toml
         args: [--ignore-missing-imports, --show-error-codes]
-        exclude: ^tests/
+        # Check both source and test files
 
   # Pylint (errors only)
   - repo: https://github.com/pycqa/pylint
@@ -52,4 +52,4 @@ repos:
     hooks:
       - id: pylint
         args: [--errors-only, --max-line-length=120]
-        exclude: ^tests/
+        # Check both source and test files

@@ -12,6 +12,7 @@ All mixin functionality is tested through the integrated PulpClient class,
 which is the correct approach for testing mixin-based architecture.
 """
 
+import json
 from pathlib import Path
 from unittest.mock import Mock, patch, mock_open
 import pytest
@@ -19,6 +20,7 @@ import httpx
 from httpx import HTTPError
 
 from pulp_tool.api import PulpClient, OAuth2ClientCredentialsAuth
+from pulp_tool.models.pulp_api import RpmDistributionRequest, RpmRepositoryRequest
 
 
 class TestPulpClient:
@@ -732,9 +734,14 @@ class TestPulpClient:
         httpx_mock.post("https://pulp.example.com/pulp/api/v3/test-domain/api/v3/repositories/rpm/rpm/").mock(
             return_value=httpx.Response(201, json={"pulp_href": "/pulp/api/v3/repositories/rpm/rpm/12345/"})
         )
+        new_repo = RpmRepositoryRequest(name="test-repo", autopublish=True)
 
-        result = mock_pulp_client.repository_operation("create_repo", "rpm", "test-repo")
+        result = mock_pulp_client.repository_operation("create_repo", "rpm", repository_data=new_repo)
 
+        captured_request = httpx_mock.calls[0].request.content
+        captured_request_body = json.loads(captured_request)
+        expected_request_body = {"name": "test-repo", "autopublish": True}
+        assert captured_request_body == expected_request_body
         assert result.status_code == 201
         assert result.json()["pulp_href"] == "/pulp/api/v3/repositories/rpm/rpm/12345/"
 
@@ -743,7 +750,7 @@ class TestPulpClient:
         mock_pulp_client._get_single_resource = Mock()
         mock_pulp_client._get_single_resource.return_value = mock_response
 
-        result = mock_pulp_client.repository_operation("get_repo", "rpm", "test-repo")
+        result = mock_pulp_client.repository_operation("get_repo", "rpm", name="test-repo")
 
         assert result == mock_response
         mock_pulp_client._get_single_resource.assert_called_once()
@@ -754,9 +761,14 @@ class TestPulpClient:
         httpx_mock.post("https://pulp.example.com/pulp/api/v3/test-domain/api/v3/distributions/rpm/rpm/").mock(
             return_value=httpx.Response(201, json={"pulp_href": "/pulp/api/v3/distributions/rpm/rpm/12345/"})
         )
+        new_distro = RpmDistributionRequest(name="test-distro", base_path="test-distro", repository="test-repo")
 
-        result = mock_pulp_client.repository_operation("create_distro", "rpm", "test-distro", repository="test-repo")
+        result = mock_pulp_client.repository_operation("create_distro", "rpm", distribution_data=new_distro)
 
+        captured_request = httpx_mock.calls[0].request.content
+        captured_request_body = json.loads(captured_request)
+        expected_request_body = {"name": "test-distro", "base_path": "test-distro", "repository": "test-repo"}
+        assert captured_request_body == expected_request_body
         assert result.status_code == 201
         assert result.json()["pulp_href"] == "/pulp/api/v3/distributions/rpm/rpm/12345/"
 
@@ -765,7 +777,7 @@ class TestPulpClient:
         mock_pulp_client._get_single_resource = Mock()
         mock_pulp_client._get_single_resource.return_value = mock_response
 
-        result = mock_pulp_client.repository_operation("get_distro", "rpm", "test-distro")
+        result = mock_pulp_client.repository_operation("get_distro", "rpm", name="test-distro")
 
         assert result == mock_response
         mock_pulp_client._get_single_resource.assert_called_once()
@@ -780,7 +792,7 @@ class TestPulpClient:
         result = mock_pulp_client.repository_operation(
             "update_distro",
             "rpm",
-            "test-distro",
+            name="test-distro",
             distribution_href="/pulp/api/v3/distributions/12345/",
             publication="/pulp/api/v3/publications/67890/",
         )
@@ -885,7 +897,7 @@ class TestPulpClient:
         result = mock_pulp_client.repository_operation(
             "update_distro",
             "rpm",
-            "test-distro",
+            name="test-distro",
             distribution_href="/pulp/api/v3/distributions/12345/",
             publication="/pulp/api/v3/publications/67890/",
         )
@@ -949,7 +961,7 @@ class TestPulpClientAdditional:
         )
 
         result = mock_pulp_client.repository_operation(
-            "update_distro", "rpm", "test-distro", distribution_href="/pulp/api/v3/distributions/12345/"
+            "update_distro", "rpm", name="test-distro", distribution_href="/pulp/api/v3/distributions/12345/"
         )
 
         assert result.status_code == 200
@@ -958,4 +970,4 @@ class TestPulpClientAdditional:
     def test_repository_operation_invalid_operation(self, mock_pulp_client):
         """Test repository_operation method with invalid operation."""
         with pytest.raises(ValueError, match="Unknown operation"):
-            mock_pulp_client.repository_operation("invalid", "rpm", "test")
+            mock_pulp_client.repository_operation("invalid", "rpm", name="test")

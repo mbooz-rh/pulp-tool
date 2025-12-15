@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from pulp_tool.models.repository import RepositoryRefs
-from pulp_tool.models.pulp_api import TaskResponse
+from pulp_tool.models.pulp_api import RpmRepositoryRequest, TaskResponse
 from pulp_tool.utils.repository_manager import RepositoryManager
 
 
@@ -99,7 +99,9 @@ class TestRepositoryManagerCreateNewRepository:
             "create": Mock(return_value=mock_response),
         }
 
-        prn, href = manager._create_new_repository(methods, "test-build/rpms", "rpms")
+        new_repo = RpmRepositoryRequest(name="test-build/rpms")
+
+        prn, href = manager._create_new_repository(methods, new_repo, "rpms")
 
         assert prn == "test-prn"
         assert href == "test-href"
@@ -119,8 +121,10 @@ class TestRepositoryManagerCreateNewRepository:
             "create": Mock(return_value=mock_response),
         }
 
+        new_repo = RpmRepositoryRequest(name="test-build/rpms")
+
         with pytest.raises(ValueError) as exc_info:
-            manager._create_new_repository(methods, "test-build/rpms", "rpms")
+            manager._create_new_repository(methods, new_repo, "rpms")
 
         assert "No rpms repository found after creation" in str(exc_info.value)
 
@@ -139,8 +143,10 @@ class TestRepositoryManagerCreateNewRepository:
             "create": Mock(return_value=mock_response),
         }
 
+        new_repo = RpmRepositoryRequest(name="test-build/rpms")
+
         with pytest.raises(ValueError) as exc_info:
-            manager._create_new_repository(methods, "test-build/rpms", "rpms")
+            manager._create_new_repository(methods, new_repo, "rpms")
 
         assert "Unexpected response format" in str(exc_info.value)
 

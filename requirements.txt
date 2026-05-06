@@ -10,7 +10,7 @@ annotated-types==0.7.0
     # via pydantic
 anyio==4.13.0
     # via httpx
-astroid==4.0.4
+astroid==4.1.2
     # via pylint
 black==26.3.1
     # via pulp-tool

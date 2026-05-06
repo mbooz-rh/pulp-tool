@@ -71,7 +71,7 @@ hypothesis==6.152.1
     # via pulp-tool
 identify==2.6.19
     # via pre-commit
-idna==3.12
+idna==3.13
     # via
     #   anyio
     #   httpx

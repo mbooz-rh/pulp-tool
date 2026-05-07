@@ -1,0 +1,21 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "github>konflux-ci/mintmaker-presets:cve-automerge-all",
+    "group:recommended"
+  ],
+  "schedule": ["before 6am on Monday"],
+  "tekton": {
+    "schedule": ["before 6am on Monday"]
+  },
+  "updateNotScheduled": false,
+  "prConcurrentLimit": 3,
+  "prHourlyLimit": 1,
+  "packageRules": [
+    {
+      "description": "Group pyproject.toml / uv.lock (pep621) updates into one PR",
+      "matchManagers": ["pep621"],
+      "groupName": "python pep621"
+    }
+  ]
+}

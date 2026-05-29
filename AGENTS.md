@@ -8,8 +8,8 @@ Do this **in order** when starting work in a **new thread** or with a **new** mo
 
 1. **This file** — commands, conventions, and links below. In Cursor, attach **`@AGENTS.md`** at session start when practical.
 2. **`docs/ARCHITECTURE.md`** — code map, mermaid flow, invariants, glossary (open if you will touch more than one area or are unfamiliar with the layout).
-3. **`CLAUDE.md`** — **only** if changing `upload`, global CLI flags, SBOM/artifact results, or the container image (Tekton paths/flags).
-4. **`.cursor/rules/llm-development-guidelines-deep.mdc`** — optional **`@llm-development-guidelines-deep`** when you need full lint-tool tables, long PR/CHANGELOG templates, or troubleshooting.
+3. **changing-pulp-upload** skill + **`CLAUDE.md`** — **only** if changing `upload`, global CLI flags, SBOM/artifact results, or the container image ([`skills/changing-pulp-upload/SKILL.md`](skills/changing-pulp-upload/SKILL.md)).
+4. **On-demand skills** — see [`.cursor/rules/llm-development-guidelines-deep.mdc`](.cursor/rules/llm-development-guidelines-deep.mdc) (skill index) and [`skills/README.md`](skills/README.md): PR drafting, diff-cover failures, lint/CI troubleshooting.
 
 Do **not** read all of [CONTRIBUTING.md](CONTRIBUTING.md) up front unless you are changing process, dependencies, or release workflow.
 
@@ -26,7 +26,7 @@ Copy-paste **`make` / pre-commit** flow, **`make lock`** for dependencies, and P
 ## Key conventions (do not skip)
 
 1. **GitHub merge:** every changed line in a PR needs executing test coverage — run `make test-diff-coverage` (same as CI diff-cover), not only `make test`.
-2. **Konflux:** never change `upload` / artifact paths / Tekton assumptions without cross-checking [CLAUDE.md](CLAUDE.md) and the linked task YAMLs there.
+2. **Konflux:** never change `upload` / artifact paths / Tekton assumptions without the **changing-pulp-upload** skill, [CLAUDE.md](CLAUDE.md), and the linked task YAMLs there.
 3. **Documentation:** Keep **relevant** in-repo docs and core `.md` files in sync with your change in the **same PR** (do not leave stale references):
    - **CLI** (`pulp_tool/cli/`): [docs/cli-reference.md](docs/cli-reference.md) — flags, behavior, examples; should match `pulp-tool <command> --help`.
    - **Architecture** (layout, data flow, boundaries, integrations): [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
@@ -35,9 +35,10 @@ Copy-paste **`make` / pre-commit** flow, **`make lock`** for dependencies, and P
    - **Contributor workflow** (checks, deps, process): [CONTRIBUTING.md](CONTRIBUTING.md).
    - **Tests / layout:** [tests/README.md](tests/README.md) when test organization or conventions change.
    - **ADRs:** [docs/adr/](docs/adr/) when you record a new architectural decision (see [0000-record-architecture-decisions.md](docs/adr/0000-record-architecture-decisions.md)).
+   - **Agent skills** (`skills/`): [skills/README.md](skills/README.md) — index and cross-tool discovery; update when adding or renaming skills.
    - **Cross-links:** If you move or rename files, update links in other `.md` and Cursor rules that pointed at the old path.
 4. **Types:** prefer hints; `mypy` covers `pulp_tool/` (see `pyproject.toml` overrides).
-5. **Changelog / PR text:** always-on [`.cursor/rules/llm-development-guidelines.mdc`](.cursor/rules/llm-development-guidelines.mdc); full templates and tooling detail in [`llm-development-guidelines-deep.mdc`](.cursor/rules/llm-development-guidelines-deep.mdc) (`@llm-development-guidelines-deep` in Cursor). Ask before drafting PR boilerplate; update `CHANGELOG.md` when preparing the PR, not every debug iteration.
+5. **Changelog / PR text:** always-on [`.cursor/rules/llm-development-guidelines.mdc`](.cursor/rules/llm-development-guidelines.mdc); on confirmation load **drafting-pulp-tool-pr** skill ([`skills/drafting-pulp-tool-pr/`](skills/drafting-pulp-tool-pr/)). Skill index: [`llm-development-guidelines-deep.mdc`](.cursor/rules/llm-development-guidelines-deep.mdc). Ask before drafting PR boilerplate; update `CHANGELOG.md` when preparing the PR, not every debug iteration.
 
 ---
 
@@ -45,7 +46,7 @@ Copy-paste **`make` / pre-commit** flow, **`make lock`** for dependencies, and P
 
 - PR body: use [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) **as-is**—same section headings and checklist items; fill in content under each section only.
 - AI-assisted commits: [.github/commit-message-template.txt](.github/commit-message-template.txt), `Assisted-By:` + `Signed-off-by:` — details in [CONTRIBUTING.md](CONTRIBUTING.md#ai-assisted-commits).
-- Essentials (always-on): [`.cursor/rules/llm-development-guidelines.mdc`](.cursor/rules/llm-development-guidelines.mdc); extended reference: [`.cursor/rules/llm-development-guidelines-deep.mdc`](.cursor/rules/llm-development-guidelines-deep.mdc) and [CONTRIBUTING.md](CONTRIBUTING.md).
+- Essentials (always-on): [`.cursor/rules/llm-development-guidelines.mdc`](.cursor/rules/llm-development-guidelines.mdc); on-demand skills: [`skills/`](skills/) ([`skills/README.md`](skills/README.md), [skill index](.cursor/rules/llm-development-guidelines-deep.mdc)); [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
@@ -59,3 +60,4 @@ High-level **structure, diagrams, invariants, and glossary:** [docs/ARCHITECTURE
 
 - Full CLI flags: [docs/cli-reference.md](docs/cli-reference.md).
 - Test patterns: [tests/README.md](tests/README.md).
+- Agent skills (portable): [skills/README.md](skills/README.md) — Cursor/Claude Code/Codex discover via [`.cursor/skills/`](.cursor/skills/) and [`.agents/skills/`](.agents/skills/) symlinks.

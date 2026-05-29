@@ -15,7 +15,8 @@ Platform: [Konflux documentation](https://konflux-ci.dev/docs/). Upstream Pulp: 
 | **Python** | >= 3.12 (`pyproject.toml`) |
 | **Package / CLI** | `pulp_tool` / `pulp-tool` → `pulp_tool.cli:main` |
 | **Konflux image** | `pulp-tool-container` (see `.tekton/pulp-tool-container-build-push.yaml`) |
-| **Deep workflow** | Always-on [.cursor/rules/llm-development-guidelines.mdc](.cursor/rules/llm-development-guidelines.mdc); full detail [.cursor/rules/llm-development-guidelines-deep.mdc](.cursor/rules/llm-development-guidelines-deep.mdc) (`@llm-development-guidelines-deep`) |
+| **Agent workflow** | Always-on [.cursor/rules/llm-development-guidelines.mdc](.cursor/rules/llm-development-guidelines.mdc); on-demand [skills/](skills/) ([skill index](.cursor/rules/llm-development-guidelines-deep.mdc)) |
+| **Upload changes** | **changing-pulp-upload** skill ([`skills/changing-pulp-upload/SKILL.md`](skills/changing-pulp-upload/SKILL.md)) + this file |
 
 **PR review rule:** Any PR touching **`upload`**, global options, SBOM/artifact paths, TLS/config paths in containers, or the image must still match the **two pipelines** below — open the linked YAML on GitHub; upstream tasks evolve.
 
@@ -90,4 +91,5 @@ Before merging changes that affect the above, re-read both task YAMLs and extend
 - Contributing / checks: [CONTRIBUTING.md](CONTRIBUTING.md)
 - CLI reference: [docs/cli-reference.md](docs/cli-reference.md)
 - Konflux shorthand: [.cursor/rules/konflux-ecosystem.mdc](.cursor/rules/konflux-ecosystem.mdc)
+- Upload change workflow: [skills/changing-pulp-upload/SKILL.md](skills/changing-pulp-upload/SKILL.md)
 - Optional Hypothesis / Ghostwriter: [tests/README.md](tests/README.md)

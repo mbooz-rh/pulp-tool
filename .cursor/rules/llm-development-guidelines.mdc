@@ -1,11 +1,11 @@
 ---
-description: "LLM essentials—bootstrap order in AGENTS.md, post-change workflow, 100% diff coverage, PR/CHANGELOG timing (full detail in llm-development-guidelines-deep.mdc)"
+description: "LLM essentials—bootstrap order in AGENTS.md, post-change workflow, 100% diff coverage, PR/CHANGELOG timing (skills for detail)"
 alwaysApply: true
 ---
 
 # LLM-assisted development (essentials)
 
-**Read order:** [AGENTS.md](../../AGENTS.md) → this file (always on) → [CLAUDE.md](../../CLAUDE.md) only for `upload`/Konflux/image → [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md) when touching multiple packages. **Extended detail** (per-tool lint commands, long PR template, troubleshooting): [.cursor/rules/llm-development-guidelines-deep.mdc](llm-development-guidelines-deep.mdc) — use `@llm-development-guidelines-deep` in Cursor when needed.
+**Read order:** [AGENTS.md](../../AGENTS.md) → this file (always on) → **changing-pulp-upload** skill + [CLAUDE.md](../../CLAUDE.md) only for `upload`/Konflux/image → [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md) when touching multiple packages. **On-demand skills:** [.cursor/rules/llm-development-guidelines-deep.mdc](llm-development-guidelines-deep.mdc) (skill index).
 
 ## Domain
 
@@ -15,9 +15,9 @@ alwaysApply: true
 ## Pull requests and CHANGELOG
 
 - **Do not** paste a full PR body every turn. If the turn might become a PR, **ask once** if the user wants paste-ready PR text.
-- **After they confirm:** provide PR text that **follows `.github/PULL_REQUEST_TEMPLATE.md` verbatim**: use the same **`##` headings** in order (`## Summary`, `## How to test`, `## Checklist`, `## Notes for reviewers`), keep the **checklist lines** as written (typically unchecked `- [ ]` items), then fill **Summary** / **How to test** / **Notes**—do not substitute a different outline. Also provide a suggested commit (`Assisted-By:` + `Signed-off-by:` per `.github/commit-message-template.txt`), and **`CHANGELOG.md`** under `[Unreleased]` when notable — **same turn**. Full detail: **deep** rule § *GitHub PR description*.
+- **After they confirm:** load **drafting-pulp-tool-pr** skill — PR text follows `.github/PULL_REQUEST_TEMPLATE.md` verbatim; include suggested commit (`Assisted-By:` + `Signed-off-by:` per `.github/commit-message-template.txt`) and **`CHANGELOG.md`** under `[Unreleased]` when notable — **same turn**.
 - **No** `CHANGELOG` edits on every debug fix unless the user asks.
-- **Merge gate:** **100% diff coverage** on the PR diff (`make test-diff-coverage`). Overall project % is separate.
+- **Merge gate:** **100% diff coverage** on the PR diff (`make test-diff-coverage`). If it fails, use **fixing-diff-cover-failures** skill.
 
 ## After code changes (mandatory)
 
@@ -33,7 +33,7 @@ Do not treat the branch as PR-ready without clean pre-commit, green tests, and p
 
 | Topic | Where |
 |-------|--------|
-| Per-tool lint, hooks, long PR/CHANGELOG, troubleshooting | `llm-development-guidelines-deep.mdc` |
+| Skill index (PR draft, diff-cover, lint CI) | `llm-development-guidelines-deep.mdc` · [`skills/`](../../skills/) |
 | Copy-paste setup & merge policy | `AGENTS.md` |
 | PR template / commit layout | `.github/PULL_REQUEST_TEMPLATE.md`, `.github/commit-message-template.txt` |
 | CONTRIBUTING | `CONTRIBUTING.md` |
@@ -43,4 +43,4 @@ Do not treat the branch as PR-ready without clean pre-commit, green tests, and p
 - Pre-commit: fully passing run (not “mostly” fixed).
 - Tests: full `make test` green.
 - PR: `make test-diff-coverage` green after `git fetch origin`.
-- PR materials: only after user confirmation; include trailers when drafting commits.
+- PR materials: only after user confirmation; use **drafting-pulp-tool-pr** skill.

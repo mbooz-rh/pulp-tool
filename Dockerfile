@@ -1,22 +1,45 @@
 # Dockerfile for pulp-tool
-# Base image: Fedora 45 (system python3 is 3.15)
-FROM registry.fedoraproject.org/fedora:45@sha256:4cb651e59f9bdef53f826ffc8d8d84980d0d8dac17924dc2a2c735ab947cba05
+# Base image: UBI 10 minimal (system python3 is 3.12)
+FROM registry.access.redhat.com/ubi10-minimal
 
-RUN dnf install -y python3 python3-pip jq && dnf clean all
+ARG VERSION=1.0.0
+ARG RELEASE=1
 
-# Set working directory
+LABEL name="pulp-tool-container" \
+      description="Konflux container image for pulp-tool Pulp API client operations" \
+      summary="pulp-tool container image for uploading RPMs and artifacts to Pulp" \
+      maintainer="Rok Artifact Storage Team <jreidy@redhat.com>" \
+      io.k8s.description="Konflux container image for pulp-tool Pulp API client operations" \
+      com.redhat.component="pulp-tool-container" \
+      distribution-scope="public" \
+      release="${RELEASE}" \
+      version="${VERSION}" \
+      url="https://github.com/konflux/pulp-tool/" \
+      vendor="Red Hat, Inc."
+
+# OpenShift preflight check requires licensing files under /licenses
+COPY LICENSE /licenses/LICENSE
+
+RUN microdnf update -y && \
+    microdnf install -y \
+        python3 \
+        python3-pip \
+        jq \
+        shadow-utils && \
+    microdnf clean all
+
 WORKDIR /app
 
-# Copy project files needed for installation
 COPY setup.py pyproject.toml README.md MANIFEST.in VERSION ./
 COPY pulp_tool/ ./pulp_tool/
 
-# gcc is required at install time to build pydantic-core for Python 3.15
-RUN dnf install -y gcc \
-    && pip install --no-cache-dir . \
-    && rm -rf /root/.cache \
-    && dnf remove -y gcc \
-    && dnf clean all
+RUN pip3 install --no-cache-dir --root-user-action=ignore . && \
+    rm -rf /root/.cache
 
-# The pulp-tool command is now available in PATH
-# No entrypoint specified - users can run commands as needed
+RUN useradd -lms /bin/bash -u 1001 -g 0 pulp-tool && \
+    chown -R 1001:0 /app && \
+    chmod -R g=u /app
+
+USER 1001
+
+# The pulp-tool command is available in PATH; no entrypoint — Tekton invokes it directly.

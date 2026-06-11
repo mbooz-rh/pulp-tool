@@ -107,7 +107,7 @@ No application database: state is on Pulp and in generated JSON artifacts.
 
 ## 7. Key design decisions
 
-Formal records: [ADR 0000 — how we record decisions](adr/0000-record-architecture-decisions.md); other ADRs live under [docs/adr/](adr/). Examples in-repo: Python 3.12 minimum / 3.15 in CI and container image, httpx. High level:
+Formal records: [ADR 0000 — how we record decisions](adr/0000-record-architecture-decisions.md); other ADRs live under [docs/adr/](adr/). Examples in-repo: Python 3.12 (CI, container image on UBI 10), httpx. High level:
 
 - **httpx** for HTTP (async-capable client, retries for transient errors in session layer).
 - **Click** for CLI; optional plugin entry points for command discovery.

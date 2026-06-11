@@ -41,7 +41,7 @@ test:
 
 # Same as GitHub Actions: 100% coverage on lines changed vs merge base (requires coverage.xml from test).
 # Requires diff-cover (included in pip install -e ".[dev]" / make install-dev).
-# Build the Konflux container image locally and verify pulp-tool starts (Python 3.15 / Fedora 45).
+# Build the Konflux container image locally and verify pulp-tool starts (Python 3.12 / UBI 10).
 test-container:
 	@command -v podman >/dev/null 2>&1 && ENGINE=podman || ENGINE=docker; \
 	$$ENGINE build -t pulp-tool:test . && \

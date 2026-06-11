@@ -12,7 +12,7 @@ Platform: [Konflux documentation](https://konflux-ci.dev/docs/). Upstream Pulp: 
 
 | Item | Value |
 |------|------|
-| **Python** | >= 3.12 (`pyproject.toml`); CI and container image use **3.15** (Fedora 45) |
+| **Python** | **3.12** (`pyproject.toml` `requires-python >=3.12`; CI and container image on UBI 10) |
 | **Package / CLI** | `pulp_tool` / `pulp-tool` → `pulp_tool.cli:main` |
 | **Konflux image** | `pulp-tool-container` (see `.tekton/pulp-tool-container-build-push.yaml`) |
 | **Agent workflow** | Always-on [.cursor/rules/llm-development-guidelines.mdc](.cursor/rules/llm-development-guidelines.mdc); on-demand [skills/](skills/) ([skill index](.cursor/rules/llm-development-guidelines-deep.mdc)) |

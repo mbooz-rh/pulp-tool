@@ -2,7 +2,7 @@
 name: changing-pulp-container
 description: >-
   Use when changing the Dockerfile, .tekton/ PipelineRuns, pulp-tool-container
-  image, Fedora/Python base, or Konflux container build integration. Container
+  image, UBI/Python base, or Konflux container build integration. Container
   images are built by Konflux Tekton — not GitHub Actions.
 ---
 
@@ -51,7 +51,7 @@ Shared: namespace `artifact-storage-tenant`, app/component `tooling` / `pulp-too
 
 - [ ] `Dockerfile` builds (`make test-container` or Konflux PR `build-container` task)
 - [ ] `pulp-tool --version` / `--help` in built image
-- [ ] Python matches Fedora base (currently **3.15**); transient `gcc` for `pydantic-core` if no cp315 wheel
+- [ ] Python matches UBI base (currently **3.12** on UBI 10 minimal)
 - [ ] `.tekton/` image refs and PAC CEL expressions correct
 - [ ] No duplicate GHA container workflow
 - [ ] Downstream tasks ([CLAUDE.md](../../CLAUDE.md)) unchanged
@@ -60,8 +60,8 @@ Shared: namespace `artifact-storage-tenant`, app/component `tooling` / `pulp-too
 
 - GHA `docker build` as CI gate — Konflux builds on every PR/push to `main`
 - Hermetic build without prefetch — would break `dnf`/`pip` in Dockerfile
-- Stale Python pin vs Fedora base image
-- `gcc` or `/root/.cache` left in final image layers
+- Stale Python pin vs UBI base image
+- `/root/.cache` left in final image layers
 - Quay path / component label changes without tenant coordination
 
 ## Quick reference

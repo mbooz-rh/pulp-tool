@@ -22,7 +22,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.15",
     "Typing :: Typed",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: System :: Archiving :: Packaging",
@@ -124,7 +123,7 @@ min-public-methods = 1
 max-public-methods = 20
 
 [tool.mypy]
-python_version = "3.15"
+python_version = "3.12"
 warn_return_any = false
 warn_unused_configs = true
 disallow_untyped_defs = false

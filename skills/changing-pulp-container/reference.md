@@ -59,7 +59,7 @@ Key params wired by the pipeline:
 - `HERMETIC` → `false` (allows `dnf`/`pip` network in Dockerfile)
 - `SOURCE_ARTIFACT` / `CACHI2_ARTIFACT` from clone + prefetch tasks
 
-A failing `pip install`, missing `gcc`, or bad base image digest typically fails **`build-container`**, not GitHub Actions.
+A failing `pip install` or bad base image digest typically fails **`build-container`**, not GitHub Actions.
 
 ## Pipeline results
 
